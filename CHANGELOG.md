@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Declared support for Dart 2.
+- Upgraded dependencies.
+
 ## 1.0.0
 
 - First public version.
