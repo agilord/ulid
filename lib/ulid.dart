@@ -148,7 +148,7 @@ List<int> _base32Decode =
     new List<int>.generate(256, (int i) => _lowercaseCodes.indexOf(i));
 
 main() {
-  for (int i = 0 ; i < 1000; i ++) {
+  for (int i = 0; i < 1000; i++) {
     print(new Ulid());
   }
 }
