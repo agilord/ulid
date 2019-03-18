@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2
+
+- Using `package:pedantic`.
+- Removed leftover `main` method.
+
 ## 1.0.1
 
 - Declared support for Dart 2.

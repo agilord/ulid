@@ -73,7 +73,7 @@ class Ulid {
   }
 
   /// Render the 36- or 32-character UUID format.
-  String toUuid({bool compact: false}) {
+  String toUuid({bool compact = false}) {
     final StringBuffer sb = new StringBuffer();
     for (int i = 0; i < 16; i++) {
       if (!compact && (i == 4 || i == 6 || i == 8 || i == 10)) {
@@ -146,9 +146,3 @@ List<int> _lowercaseCodes =
     new List<int>.generate(32, (int i) => _crockfordBase32[i].codeUnits.first);
 List<int> _base32Decode =
     new List<int>.generate(256, (int i) => _lowercaseCodes.indexOf(i));
-
-main() {
-  for (int i = 0; i < 1000; i++) {
-    print(new Ulid());
-  }
-}
