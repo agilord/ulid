@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3
+
+- Fixed bit loss in browser's int handling.
+
 ## 1.0.2
 
 - Using `package:pedantic`.
