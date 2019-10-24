@@ -111,24 +111,24 @@ class Ulid {
   String toString() => toCanonical();
 
   void _encode(int inS, int inE, Uint8List buffer, int outS, int outE) {
-    int value = 0;
+    BigInt value = BigInt.from(0);
     for (int i = inS; i <= inE; i++) {
-      value = (value << 8) + _data[i];
+      value = (value << 8) + BigInt.from(_data[i]);
     }
     for (int i = outE; i >= outS; i--) {
-      buffer[i] = value & 0x1F;
+      buffer[i] = value.toInt() & 0x1F;
       value = value >> 5;
     }
   }
 
   static void _decode(
       Uint8List buffer, int inS, int inE, Uint8List data, int outS, int outE) {
-    int value = 0;
+    BigInt value = BigInt.from(0);
     for (int i = inS; i <= inE; i++) {
-      value = (value << 5) + buffer[i];
+      value = (value << 5) + BigInt.from(buffer[i]);
     }
     for (int i = outE; i >= outS; i--) {
-      data[i] = value & 0xFF;
+      data[i] = value.toInt() & 0xFF;
       value = value >> 8;
     }
   }
