@@ -31,4 +31,19 @@ void main() {
     expect(id.toUuid(), '015c8e52-e8c9-8070-3709-877e5de58402');
     expect(id.toMillis(), 1497036417225);
   });
+
+  test('operator ==', () {
+    final ulid1 = Ulid();
+    final ulid2 = Ulid.parse(ulid1.toCanonical());
+    expect(ulid2, ulid1);
+    expect(ulid1, isNot(Ulid()));
+  });
+
+  test('hashCode', () {
+    final ulid1 = Ulid();
+    final ulid2 = Ulid.parse(ulid1.toCanonical());
+
+    expect(ulid2.hashCode, ulid1.hashCode);
+    expect(ulid1, isNot(Ulid().hashCode));
+  });
 }
