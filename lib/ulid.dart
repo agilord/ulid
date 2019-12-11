@@ -110,6 +110,22 @@ class Ulid {
   @override
   String toString() => toCanonical();
 
+  @override
+  bool operator ==(other) {
+    if (other is Ulid) {
+      for (int i = 0; i < _data.length; i++) {
+        if (other._data[i] != _data[i]) return false;
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  @override
+  int get hashCode => _data.join().hashCode;
+
+
   void _encode(int inS, int inE, Uint8List buffer, int outS, int outE) {
     BigInt value = BigInt.from(0);
     for (int i = inS; i <= inE; i++) {
