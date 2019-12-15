@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+
+- implement `operator ==` and `hashCode`
+
 ## 1.0.3
 
 - Fixed bit loss in browser's int handling.
