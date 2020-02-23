@@ -4,6 +4,6 @@
 import 'package:ulid/ulid.dart';
 
 void main() {
-  print(new Ulid());
-  print(new Ulid().toUuid());
+  print(Ulid());
+  print(Ulid().toUuid());
 }

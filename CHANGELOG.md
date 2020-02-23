@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- Updated code to 2.7 Dart and latest `pedantic` lints. 
+- Added `Ulid.toBytes` and `Ulid.fromBytes`.
+
 ## 1.0.4
 
 - implement `operator ==` and `hashCode`

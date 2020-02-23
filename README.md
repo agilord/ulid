@@ -13,8 +13,8 @@ A simple usage example:
 import 'package:ulid/ulid.dart';
 
 main() {
-  print(new Ulid());
-  print(new Ulid().toUuid());
+  print(Ulid());
+  print(Ulid().toUuid());
 }
 ````
 

@@ -6,30 +6,56 @@ import 'package:test/test.dart';
 
 void main() {
   test('length', () {
-    final Ulid id = new Ulid();
+    final id = Ulid();
     expect(id.toCanonical(), hasLength(26));
     expect(id.toUuid(), hasLength(36));
     expect(id.toUuid(compact: true), hasLength(32));
   });
 
   test('fixed time', () {
-    final Ulid id = new Ulid(millis: 1469918176385);
+    final id = Ulid(millis: 1469918176385);
     expect(id.toCanonical().substring(0, 10), '01aryz6s41');
     expect(id.toMillis(), 1469918176385);
   });
 
   test('parse compact', () {
-    final Ulid id = new Ulid.parse('01bj755t69g1r3e2c7fseyb102');
+    final id = Ulid.parse('01bj755t69g1r3e2c7fseyb102');
     expect(id.toCanonical(), '01bj755t69g1r3e2c7fseyb102');
     expect(id.toUuid(), '015c8e52-e8c9-8070-3709-877e5de58402');
     expect(id.toMillis(), 1497036417225);
   });
 
   test('parse uuid', () {
-    final Ulid id = new Ulid.parse('015c8e52-e8c9-8070-3709-877e5de58402');
+    final id = Ulid.parse('015c8e52-e8c9-8070-3709-877e5de58402');
     expect(id.toCanonical(), '01bj755t69g1r3e2c7fseyb102');
     expect(id.toUuid(), '015c8e52-e8c9-8070-3709-877e5de58402');
     expect(id.toMillis(), 1497036417225);
+  });
+
+  test('parse bytes', () {
+    final bytes = [
+      1,
+      92,
+      142,
+      82,
+      232,
+      201,
+      128,
+      112,
+      55,
+      9,
+      135,
+      126,
+      93,
+      229,
+      132,
+      2,
+    ];
+    final id = Ulid.fromBytes(bytes);
+    expect(id.toCanonical(), '01bj755t69g1r3e2c7fseyb102');
+    expect(id.toUuid(), '015c8e52-e8c9-8070-3709-877e5de58402');
+    expect(id.toMillis(), 1497036417225);
+    expect(id.toBytes(), bytes);
   });
 
   test('operator ==', () {
