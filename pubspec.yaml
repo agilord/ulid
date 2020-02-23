@@ -3,7 +3,6 @@ description: >
   Lexicographically sortable, 128-bit identifier (UUID) with 48-bit timestamp and 80 random bits.
   Canonically encoded as a 26 character string, as opposed to the 36 character UUID.
 version: 1.1.0
-author: Istvan Soos <istvan.soos@agilord.com>
 homepage: https://github.com/agilord/ulid
 
 environment:
