@@ -2,7 +2,7 @@
 
 ## 2.0.0
 
-- Migrate to null safety.
+- Migrate to null safety. ([#10](https://github.com/agilord/ulid/pull/10) by [ChristianGaertner](https://github.com/ChristianGaertner))
 
 ## 1.1.0
 
