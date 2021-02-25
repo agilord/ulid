@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.0
+
+- Migrate to null safety.
+
 ## 1.1.0
 
 - Updated code to 2.7 Dart and latest `pedantic` lints. 

@@ -23,7 +23,7 @@ class Ulid {
   }
 
   /// Create a  [Ulid] instance.
-  factory Ulid({int millis}) {
+  factory Ulid({int? millis}) {
     final data = Uint8List(16);
     var ts = millis ?? DateTime.now().millisecondsSinceEpoch;
     for (var i = 5; i >= 0; i--) {
@@ -52,9 +52,7 @@ class Ulid {
 
   /// Creates a new instance form the provided bytes buffer.
   factory Ulid.fromBytes(List<int> bytes) {
-    if (bytes == null ||
-        bytes.length != 16 ||
-        bytes.any((b) => b > 256 || b < 0)) {
+    if (bytes.length != 16 || bytes.any((b) => b > 256 || b < 0)) {
       throw ArgumentError.value(bytes, 'bytes', 'Invalid input.');
     }
     return Ulid._(Uint8List.fromList(bytes));
