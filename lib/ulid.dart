@@ -102,7 +102,7 @@ class Ulid {
     for (var i = 0; i < 26; i++) {
       sb.write(_base32[result[i]]);
     }
-    return sb.toString();
+    return sb.toString().toUpperCase();
   }
 
   /// Get the millisecond component.
