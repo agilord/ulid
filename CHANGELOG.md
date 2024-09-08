@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1
+
+- Updated lints.
+
 ## 2.0.0
 
 - Migrate to null safety. ([#10](https://github.com/agilord/ulid/pull/10) by [ChristianGaertner](https://github.com/ChristianGaertner))
