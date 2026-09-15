@@ -5,6 +5,8 @@ Canonically encoded as a 26 character string, as opposed to the 36 character UUI
 
 Original implementation: https://github.com/alizain/ulid/
 
+Specification: https://github.com/ulid/spec
+
 ## Usage
 
 A simple usage example:
@@ -12,9 +14,11 @@ A simple usage example:
 ````dart
 import 'package:ulid/ulid.dart';
 
-main() {
+void main() {
   print(Ulid());
   print(Ulid().toUuid());
+  print(Ulid().toCanonical());
+  print(Ulid().toBase32()); // uppercase, spec-aligned format
 }
 ````
 

@@ -1,16 +1,14 @@
 // Copyright (c) 2017, Agilord. All rights reserved. Use of this source code
 // is governed by a BSD-style license that can be found in the LICENSE file.
 
-/// Lexicographically sortable, 128-bit identifier (UUID) with 48-bit timestamp
-/// and 80 random bits. Canonically encoded as a 26 character string.
-///
 /// Original implementation: https://github.com/alizain/ulid/
-library ulid;
+/// Specification: https://github.com/ulid/spec
+library;
 
 import 'dart:math';
 import 'dart:typed_data';
 
-Random _random = Random.secure();
+final _random = Random.secure();
 
 /// Lexicographically sortable, 128-bit identifier (UUID) with 48-bit timestamp
 /// and 80 random bits. Canonically encoded as a 26 character string, as opposed
@@ -22,7 +20,7 @@ class Ulid {
     assert(_data.length == 16);
   }
 
-  /// Create a  [Ulid] instance.
+  /// Create a [Ulid] instance.
   factory Ulid({int? millis}) {
     final data = Uint8List(16);
     var ts = millis ?? DateTime.now().millisecondsSinceEpoch;
@@ -36,14 +34,15 @@ class Ulid {
     return Ulid._(data);
   }
 
-  /// Parse the canonical or the UUID format.
+  /// Parse the 26-character base32 (canonical or [toBase32]), the compact
+  /// (32-character) or the full (36-character) UUID format. Accepts both
+  /// upper- and lowercase input.
   factory Ulid.parse(String value) {
     if (value.length == 26) {
       return Ulid._parseBase32(value);
     } else if (value.length == 32) {
       return Ulid._parseHex16(value);
     } else if (value.length == 36) {
-      // TODO: assert dash positions
       final withoutSlashes = value.replaceAll('-', '');
       if (withoutSlashes.length == 32) return Ulid._parseHex16(withoutSlashes);
     }
@@ -79,8 +78,9 @@ class Ulid {
     return Ulid._(data);
   }
 
-  /// Render the 36- or 32-character UUID format.
-  String toUuid({bool compact = false}) {
+  /// Render the 36- or 32-character UUID format (lowercase hex, unless
+  /// [uppercase] is set).
+  String toUuid({bool compact = false, bool uppercase = false}) {
     final sb = StringBuffer();
     for (var i = 0; i < 16; i++) {
       if (!compact && (i == 4 || i == 6 || i == 8 || i == 10)) {
@@ -89,11 +89,22 @@ class Ulid {
       sb.write(_hex[_data[i] >> 4]);
       sb.write(_hex[_data[i] & 0x0F]);
     }
-    return sb.toString();
+    final value = sb.toString();
+    return uppercase ? value.toUpperCase() : value;
   }
 
-  /// Render the canonical, 26-character format.
-  String toCanonical() {
+  /// Render the canonical, 26-character base32 format (lowercase).
+  @Deprecated('The method will be removed, use toBase32 instead.')
+  String toCanonical() => _toBase32Lower();
+
+  /// Render the 26-character base32 format in uppercase (unless [lowercase]
+  /// is set), matching the representation used by the ULID specification.
+  String toBase32({bool lowercase = false}) {
+    final value = _toBase32Lower();
+    return lowercase ? value : value.toUpperCase();
+  }
+
+  String _toBase32Lower() {
     final result = Uint8List(26);
     _encode(0, 5, result, 0, 9); // time
     _encode(6, 10, result, 10, 17); // random upper 40-bit
@@ -119,8 +130,14 @@ class Ulid {
     return Uint8List.fromList(_data);
   }
 
+  /// Returns the lowercase, canonical 26-character format.
+  ///
+  /// Warning: a future major version will switch this to the uppercase
+  /// [toBase32] representation used by the ULID specification. Call
+  /// [toBase32] or [toCanonical] directly if your code depends on a
+  /// specific casing.
   @override
-  String toString() => toCanonical();
+  String toString() => _toBase32Lower();
 
   @override
   bool operator ==(other) {
@@ -162,14 +179,14 @@ class Ulid {
 }
 
 // https://en.wikipedia.org/wiki/Base32
-String _hex16 = '0123456789abcdef';
-String _crockfordBase32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'.toLowerCase();
+const _hex16 = '0123456789abcdef';
+final _crockfordBase32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'.toLowerCase();
 
-List<String> _hex = List<String>.generate(16, (int i) => _hex16[i]);
-List<String> _base32 =
+final List<String> _hex = List<String>.generate(16, (int i) => _hex16[i]);
+final List<String> _base32 =
     List<String>.generate(32, (int i) => _crockfordBase32[i]);
 
-List<int> _lowercaseCodes =
+final List<int> _lowercaseCodes =
     List<int>.generate(32, (int i) => _crockfordBase32[i].codeUnits.first);
-List<int> _base32Decode =
+final List<int> _base32Decode =
     List<int>.generate(256, (int i) => _lowercaseCodes.indexOf(i));

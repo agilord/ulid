@@ -8,8 +8,37 @@ void main() {
   test('length', () {
     final id = Ulid();
     expect(id.toCanonical(), hasLength(26));
+    expect(id.toBase32(), hasLength(26));
     expect(id.toUuid(), hasLength(36));
     expect(id.toUuid(compact: true), hasLength(32));
+  });
+
+  test('toBase32 is uppercase, parses back to the same value', () {
+    final id = Ulid();
+    expect(id.toBase32(), id.toCanonical().toUpperCase());
+    expect(Ulid.parse(id.toBase32()), id);
+  });
+
+  test('toBase32(lowercase: true) matches toCanonical', () {
+    final id = Ulid();
+    expect(id.toBase32(lowercase: true), id.toCanonical());
+  });
+
+  test('toUuid(uppercase: true) matches toUuid().toUpperCase()', () {
+    final id = Ulid();
+    expect(id.toUuid(uppercase: true), id.toUuid().toUpperCase());
+    expect(
+      id.toUuid(compact: true, uppercase: true),
+      id.toUuid(compact: true).toUpperCase(),
+    );
+  });
+
+  test('parse accepts mixed case', () {
+    final id = Ulid.parse('01bj755t69g1r3e2c7fseyb102');
+    expect(Ulid.parse('01BJ755T69G1R3E2C7FSEYB102'), id);
+    expect(Ulid.parse('01Bj755T69g1R3e2C7fSeYb102'), id);
+    expect(Ulid.parse('015C8E52-E8C9-8070-3709-877E5DE58402'), id);
+    expect(Ulid.parse('015c8e52e8c980703709877e5de58402'.toUpperCase()), id);
   });
 
   test('fixed time', () {

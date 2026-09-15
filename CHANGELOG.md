@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0
+
+- Added `Ulid.toBase32()`: uppercase, spec-aligned 26-character format, with an
+  optional `lowercase` parameter. Added a matching `uppercase` parameter to
+  `Ulid.toUuid()`.
+- Clarified method docs on which format and casing each `toXxx()` method emits.
+- `Ulid.parse` doc clarifies it accepts both upper- and lowercase input (unchanged behavior).
+- Deprecated `Ulid.toCanonical()` in favor of `Ulid.toBase32()`; it will be removed
+  in a future major version.
+- **Warning**: `Ulid.toString()` currently returns the lowercase canonical format,
+  but a future major version will switch it to the uppercase `toBase32()`
+  format. Call `toBase32()` or `toCanonical()` explicitly if your code depends
+  on a specific casing.
+
+## 2.0.2
+
+- Updated lints and readme.
+
 ## 2.0.1
 
 - Updated lints.
