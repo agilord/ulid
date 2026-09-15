@@ -2,6 +2,7 @@
 
 ## 2.1.0
 
+- Fixed minor correctness bugs, invalid ULID string will throw `FormatException`.
 - Added `Ulid.toBase32()`: uppercase, spec-aligned 26-character format, with an
   optional `lowercase` parameter. Added a matching `uppercase` parameter to
   `Ulid.toUuid()`.

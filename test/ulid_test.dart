@@ -101,4 +101,44 @@ void main() {
     expect(ulid2.hashCode, ulid1.hashCode);
     expect(ulid1, isNot(Ulid().hashCode));
   });
+
+  test('hashCode does not collide on byte-boundary shifts', () {
+    final a = Ulid.fromBytes([1, 23, ...List.filled(14, 0)]);
+    final b = Ulid.fromBytes([12, 3, ...List.filled(14, 0)]);
+    expect(a, isNot(b));
+    expect(a.hashCode, isNot(b.hashCode));
+  });
+
+  test('fromBytes rejects out-of-range byte values', () {
+    final bytes = List.filled(16, 0);
+    expect(() => Ulid.fromBytes([...bytes]..[0] = 256),
+        throwsArgumentError);
+    expect(() => Ulid.fromBytes([...bytes]..[0] = -1), throwsArgumentError);
+    expect(Ulid.fromBytes([...bytes]..[0] = 255), isNotNull);
+  });
+
+  test('parse rejects invalid base32 characters', () {
+    expect(() => Ulid.parse('0ibj755t69g1r3e2c7fseyb102'),
+        throwsFormatException);
+    expect(() => Ulid.parse('01lj755t69g1r3e2c7fseyb102'),
+        throwsFormatException);
+    expect(() => Ulid.parse('01!j755t69g1r3e2c7fseyb102'),
+        throwsFormatException);
+  });
+
+  test('parse rejects UUID strings with misplaced dashes', () {
+    expect(Ulid.parse('015c8e52-e8c9-8070-3709-877e5de58402'), isNotNull);
+    expect(
+        () => Ulid.parse('015-c8e52e8c980703709877e5-de58402--'),
+        throwsArgumentError);
+    expect(() => Ulid.parse('0-15c8e52-e8c98070-3709877e5de58402'),
+        throwsArgumentError);
+  });
+
+  test('Ulid() rejects out-of-range millis', () {
+    expect(() => Ulid(millis: -1), throwsArgumentError);
+    expect(() => Ulid(millis: (1 << 48)), throwsArgumentError);
+    expect(Ulid(millis: 0), isNotNull);
+    expect(Ulid(millis: (1 << 48) - 1), isNotNull);
+  });
 }

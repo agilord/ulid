@@ -21,9 +21,15 @@ class Ulid {
   }
 
   /// Create a [Ulid] instance.
+  ///
+  /// [millis] must fit the 48-bit timestamp field (`0` to `2^48-1`).
   factory Ulid({int? millis}) {
     final data = Uint8List(16);
     var ts = millis ?? DateTime.now().millisecondsSinceEpoch;
+    if (ts < 0 || ts > 0xFFFFFFFFFFFF) {
+      throw ArgumentError.value(
+          millis, 'millis', 'Must be between 0 and 2^48-1.');
+    }
     for (var i = 5; i >= 0; i--) {
       data[i] = ts & 0xFF;
       ts = ts >> 8;
@@ -43,15 +49,21 @@ class Ulid {
     } else if (value.length == 32) {
       return Ulid._parseHex16(value);
     } else if (value.length == 36) {
+      final hasDashesInPlace = value[8] == '-' &&
+          value[13] == '-' &&
+          value[18] == '-' &&
+          value[23] == '-';
       final withoutSlashes = value.replaceAll('-', '');
-      if (withoutSlashes.length == 32) return Ulid._parseHex16(withoutSlashes);
+      if (hasDashesInPlace && withoutSlashes.length == 32) {
+        return Ulid._parseHex16(withoutSlashes);
+      }
     }
     throw ArgumentError('Unable to recognize format: $value');
   }
 
   /// Creates a new instance form the provided bytes buffer.
   factory Ulid.fromBytes(List<int> bytes) {
-    if (bytes.length != 16 || bytes.any((b) => b > 256 || b < 0)) {
+    if (bytes.length != 16 || bytes.any((b) => b > 255 || b < 0)) {
       throw ArgumentError.value(bytes, 'bytes', 'Invalid input.');
     }
     return Ulid._(Uint8List.fromList(bytes));
@@ -62,7 +74,12 @@ class Ulid {
     final data = Uint8List(16);
     final buffer = Uint8List(26);
     for (var i = 0; i < 26; i++) {
-      buffer[i] = _base32Decode[lc.codeUnitAt(i)];
+      final code = lc.codeUnitAt(i);
+      final decoded = code < _base32Decode.length ? _base32Decode[code] : -1;
+      if (decoded == -1) {
+        throw FormatException('Invalid character in ULID.', value, i);
+      }
+      buffer[i] = decoded;
     }
     _decode(buffer, 0, 9, data, 0, 5); // time
     _decode(buffer, 10, 17, data, 6, 10); // random higher 40 bit
@@ -152,7 +169,7 @@ class Ulid {
   }
 
   @override
-  int get hashCode => _data.join().hashCode;
+  int get hashCode => Object.hashAll(_data);
 
   void _encode(int inS, int inE, Uint8List buffer, int outS, int outE) {
     var value = BigInt.from(0);
