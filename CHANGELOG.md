@@ -4,6 +4,9 @@
 
 - Improved performance in various places.
 - `Comparable<Ulid>`
+- `UlidFactory` for using custom `Random` and/or monotonic increments,
+  with customizable options on the monotonic counter's range and randomness.
+- `Ulid()` constructor will use a Zone-local or falls back to the default factory.
 
 ## 2.1.0
 

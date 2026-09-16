@@ -5,14 +5,16 @@
 /// Specification: https://github.com/ulid/spec
 library;
 
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
-final _random = Random.secure();
+final _defaultFactory = UlidFactory();
+final _zoneFactoryKey = Object();
 
 /// Lexicographically sortable, 128-bit identifier (UUID) with 48-bit timestamp
-/// and 80 random bits. Canonically encoded as a 26 character string, as opposed
-/// to the 36 character UUID.
+/// and 80 random bits. Canonically encoded as a 26-character string, as opposed
+/// to the 36-character UUID.
 class Ulid implements Comparable<Ulid> {
   final Uint8List _data;
   int? _hashCode;
@@ -21,27 +23,26 @@ class Ulid implements Comparable<Ulid> {
     assert(_data.length == 16);
   }
 
-  /// Create a [Ulid] instance.
+  /// Creates a [Ulid] instance, using the zone-local [UlidFactory] set by
+  /// an enclosing [withFactory] call, or the shared default otherwise.
   ///
   /// [millis] must fit the 48-bit timestamp field (`0` to `2^48-1`).
   factory Ulid({int? millis}) {
-    final data = Uint8List(16);
-    var ts = millis ?? DateTime.now().millisecondsSinceEpoch;
-    if (ts < 0 || ts > 0xFFFFFFFFFFFF) {
-      throw ArgumentError.value(
-          millis, 'millis', 'Must be between 0 and 2^48-1.');
-    }
-    for (var i = 5; i >= 0; i--) {
-      data[i] = ts & 0xFF;
-      ts = ts >> 8;
-    }
-    for (var i = 6; i < 16; i++) {
-      data[i] = _random.nextInt(256);
-    }
-    return Ulid._(data);
+    final factory =
+        (Zone.current[_zoneFactoryKey] as UlidFactory?) ?? _defaultFactory;
+    return factory.next(millis: millis);
   }
 
-  /// Parse the 26-character base32 (canonical or [toBase32]), the compact
+  /// Runs [body] with [factory] as the zone-local [UlidFactory] used by
+  /// [Ulid()], without touching the shared default.
+  ///
+  /// Applies to [body] itself and anything scheduled from within it
+  /// (`Future`s, microtasks, timers) that stays in the same zone.
+  static R withFactory<R>(UlidFactory factory, R Function() body) {
+    return runZoned(body, zoneValues: {_zoneFactoryKey: factory});
+  }
+
+  /// Parses the 26-character base32 (canonical or [toBase32]), the compact
   /// (32-character) or the full (36-character) UUID format. Accepts both
   /// upper- and lowercase input.
   factory Ulid.parse(String value) {
@@ -62,7 +63,7 @@ class Ulid implements Comparable<Ulid> {
     throw ArgumentError('Unable to recognize format: $value');
   }
 
-  /// Creates a new instance form the provided bytes buffer.
+  /// Creates a new instance from the provided bytes buffer.
   factory Ulid.fromBytes(List<int> bytes) {
     if (bytes.length != 16 || bytes.any((b) => b > 255 || b < 0)) {
       throw ArgumentError.value(bytes, 'bytes', 'Invalid input.');
@@ -96,7 +97,7 @@ class Ulid implements Comparable<Ulid> {
     return Ulid._(data);
   }
 
-  /// Render the 36- or 32-character UUID format (lowercase hex, unless
+  /// Renders the 36- or 32-character UUID format (lowercase hex, unless
   /// [uppercase] is set).
   String toUuid({bool compact = false, bool uppercase = false}) {
     final sb = StringBuffer();
@@ -111,11 +112,11 @@ class Ulid implements Comparable<Ulid> {
     return uppercase ? value.toUpperCase() : value;
   }
 
-  /// Render the canonical, 26-character base32 format (lowercase).
+  /// Renders the canonical, 26-character base32 format (lowercase).
   @Deprecated('The method will be removed, use toBase32 instead.')
   String toCanonical() => _toBase32Lower();
 
-  /// Render the 26-character base32 format in uppercase (unless [lowercase]
+  /// Renders the 26-character base32 format in uppercase (unless [lowercase]
   /// is set), matching the representation used by the ULID specification.
   String toBase32({bool lowercase = false}) {
     final value = _toBase32Lower();
@@ -134,7 +135,7 @@ class Ulid implements Comparable<Ulid> {
     return sb.toString();
   }
 
-  /// Get the millisecond component.
+  /// Returns the millisecond component.
   int toMillis() {
     var millis = 0;
     for (var i = 0; i < 6; i++) {
@@ -143,7 +144,7 @@ class Ulid implements Comparable<Ulid> {
     return millis;
   }
 
-  /// Get the internals as bytes (copied buffer).
+  /// Returns the internals as bytes (copied buffer).
   Uint8List toBytes() {
     return Uint8List.fromList(_data);
   }
@@ -202,6 +203,203 @@ class Ulid implements Comparable<Ulid> {
     for (var i = outE; i >= outS; i--) {
       data[i] = value & 0xFF;
       value = value >> 8;
+    }
+  }
+}
+
+/// Generates [Ulid] instances.
+///
+/// By default every [next] call draws a fresh 80-bit random value. With
+/// [monotonic] set, a call whose timestamp does not exceed the last one
+/// (same millisecond, or the clock went backwards) reuses the last
+/// timestamp and increments the last random value instead, so IDs from
+/// this factory always sort in call order (see the
+/// [ULID spec](https://github.com/ulid/spec)'s monotonicity recommendation).
+///
+/// [monotonicRandomBits] keeps that many least-significant bits genuinely
+/// random on every call instead of incrementing them; only the remaining,
+/// most-significant `80 - N` bits act as the counter. Ordering is
+/// unaffected, but a bigger tail means a smaller, sooner-overflowing
+/// counter. [monotonicBufferBits] clears that many most-significant bits
+/// of every freshly drawn random value, guaranteeing the counter that
+/// amount of headroom before it can overflow (`1` guarantees at least half
+/// of the counter's range is free; this is the usual practical setting).
+///
+/// Counter overflow throws a [StateError] by default; set
+/// [incrementMillisOnOverflow] to advance the timestamp by 1ms and draw a
+/// fresh random value instead.
+///
+/// A single [UlidFactory] instance is not safe to share across isolates,
+/// but is safe to reuse across calls within the same isolate.
+class UlidFactory {
+  final bool _monotonic;
+  final bool _incrementMillisOnOverflow;
+  final int _monotonicRandomBits;
+  final int _monotonicBufferBits;
+  final Random _random;
+
+  int? _lastMillis;
+  Uint8List? _lastRandomBytes;
+
+  /// Creates a new [UlidFactory].
+  ///
+  /// [random] overrides the default [Random.secure] source (used
+  /// regardless of [monotonic]); the rest only matter when [monotonic] is
+  /// `true` (see class docs): [incrementMillisOnOverflow],
+  /// [monotonicRandomBits] and [monotonicBufferBits] (both `0` to `80`,
+  /// and their sum must not exceed `80` — the buffer only reserves
+  /// headroom within the counter, it must not reach into the random tail).
+  UlidFactory({
+    bool monotonic = false,
+    bool incrementMillisOnOverflow = false,
+    int monotonicRandomBits = 0,
+    int monotonicBufferBits = 0,
+    Random? random,
+  })  : _monotonic = monotonic,
+        _incrementMillisOnOverflow = incrementMillisOnOverflow,
+        _monotonicRandomBits = monotonicRandomBits,
+        _monotonicBufferBits = monotonicBufferBits,
+        _random = random ?? Random.secure() {
+    if (monotonicRandomBits < 0 || monotonicRandomBits > 80) {
+      throw ArgumentError.value(monotonicRandomBits, 'monotonicRandomBits',
+          'Must be between 0 and 80.');
+    }
+    if (monotonicBufferBits < 0 || monotonicBufferBits > 80) {
+      throw ArgumentError.value(monotonicBufferBits, 'monotonicBufferBits',
+          'Must be between 0 and 80.');
+    }
+    if (monotonicBufferBits + monotonicRandomBits > 80) {
+      throw ArgumentError(
+          'monotonicBufferBits ($monotonicBufferBits) + monotonicRandomBits '
+          '($monotonicRandomBits) must not exceed 80: the buffer must stay '
+          'within the counter and not reach into the random tail.');
+    }
+  }
+
+  /// Creates a new [Ulid] instance.
+  ///
+  /// [millis] must fit the 48-bit timestamp field (`0` to `2^48-1`).
+  Ulid next({int? millis}) {
+    final ts = millis ?? DateTime.now().millisecondsSinceEpoch;
+    if (ts < 0 || ts > 0xFFFFFFFFFFFF) {
+      throw ArgumentError.value(
+          millis, 'millis', 'Must be between 0 and 2^48-1.');
+    }
+
+    var effectiveMillis = ts;
+    Uint8List randomBytes;
+
+    final lastMillis = _lastMillis;
+    if (_monotonic && lastMillis != null && ts <= lastMillis) {
+      // Same millisecond, or the clock went backwards: keep the previous
+      // timestamp and increment the previous random value to preserve
+      // monotonic ordering.
+      effectiveMillis = lastMillis;
+      // Increment a copy: _incrementCounter mutates in place even when it
+      // fails (overflow), so incrementing _lastRandomBytes directly would
+      // corrupt the factory's state for later calls when this one throws.
+      randomBytes = Uint8List.fromList(_lastRandomBytes!);
+      if (_incrementCounter(randomBytes, _monotonicRandomBits)) {
+        _randomizeTailBits(randomBytes, _monotonicRandomBits);
+      } else {
+        if (!_incrementMillisOnOverflow) {
+          throw StateError('Monotonic counter overflow: exhausted the '
+              '${80 - _monotonicRandomBits}-bit counter within the same '
+              'millisecond.');
+        }
+        effectiveMillis++;
+        if (effectiveMillis > 0xFFFFFFFFFFFF) {
+          throw StateError('Monotonic millis overflow: exhausted the '
+              '48-bit timestamp field.');
+        }
+        randomBytes = _freshRandomBytes();
+      }
+    } else {
+      randomBytes = _freshRandomBytes();
+    }
+
+    if (_monotonic) {
+      _lastMillis = effectiveMillis;
+      _lastRandomBytes = randomBytes;
+    }
+
+    final data = Uint8List(16);
+    var tsRemaining = effectiveMillis;
+    for (var i = 5; i >= 0; i--) {
+      data[i] = tsRemaining & 0xFF;
+      tsRemaining = tsRemaining >> 8;
+    }
+    data.setRange(6, 16, randomBytes);
+    return Ulid._(data);
+  }
+
+  Uint8List _freshRandomBytes() {
+    final bytes = Uint8List(10);
+    for (var i = 0; i < 10; i++) {
+      bytes[i] = _random.nextInt(256);
+    }
+    if (_monotonic) {
+      _clearLeadingBits(bytes, _monotonicBufferBits);
+    }
+    return bytes;
+  }
+
+  /// Zeros the most-significant [bufferBits] bits of the 80-bit,
+  /// big-endian [bytes], reserving that much headroom for [_incrementCounter].
+  static void _clearLeadingBits(Uint8List bytes, int bufferBits) {
+    if (bufferBits <= 0) return;
+    final fullBytes = bufferBits ~/ 8;
+    final remainderBits = bufferBits % 8;
+    for (var i = 0; i < fullBytes; i++) {
+      bytes[i] = 0;
+    }
+    if (remainderBits > 0) {
+      bytes[fullBytes] &= 0xFF >> remainderBits;
+    }
+  }
+
+  /// Increments the most-significant `80 - [randomBits]` bits of the
+  /// 80-bit, big-endian [bytes] by 1, leaving the least-significant
+  /// [randomBits] bits untouched. Returns `false` if the counter portion
+  /// was already at its maximum value (in which case its bits are left as
+  /// all zeros; the untouched [randomBits] bits are unaffected either way).
+  static bool _incrementCounter(Uint8List bytes, int randomBits) {
+    if (randomBits >= 80) {
+      return false; // no counter bits to increment
+    }
+    final bitPos = randomBits % 8;
+    var i = 9 - randomBits ~/ 8;
+    var addend = 1 << bitPos;
+    for (; i >= 0; i--) {
+      final sum = bytes[i] + addend;
+      if (sum > 0xFF) {
+        bytes[i] = sum & 0xFF;
+        addend = 1;
+      } else {
+        bytes[i] = sum;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Overwrites the least-significant [randomBits] bits of the 80-bit,
+  /// big-endian [bytes] with fresh random bits, leaving the remaining,
+  /// most-significant bits untouched.
+  void _randomizeTailBits(Uint8List bytes, int randomBits) {
+    if (randomBits <= 0) return;
+    final fullBytes = randomBits ~/ 8;
+    final remainderBits = randomBits % 8;
+    final firstFullByte = 10 - fullBytes;
+    for (var i = firstFullByte; i < 10; i++) {
+      bytes[i] = _random.nextInt(256);
+    }
+    if (remainderBits > 0) {
+      final boundaryIndex = firstFullByte - 1;
+      final randomMask = (1 << remainderBits) - 1;
+      final keepMask = ~randomMask & 0xFF;
+      bytes[boundaryIndex] = (bytes[boundaryIndex] & keepMask) |
+          (_random.nextInt(256) & randomMask);
     }
   }
 }
