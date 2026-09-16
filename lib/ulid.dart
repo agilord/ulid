@@ -13,8 +13,9 @@ final _random = Random.secure();
 /// Lexicographically sortable, 128-bit identifier (UUID) with 48-bit timestamp
 /// and 80 random bits. Canonically encoded as a 26 character string, as opposed
 /// to the 36 character UUID.
-class Ulid {
+class Ulid implements Comparable<Ulid> {
   final Uint8List _data;
+  int? _hashCode;
 
   Ulid._(this._data) {
     assert(_data.length == 16);
@@ -158,6 +159,7 @@ class Ulid {
 
   @override
   bool operator ==(other) {
+    if (identical(this, other)) return true;
     if (other is Ulid) {
       for (var i = 0; i < _data.length; i++) {
         if (other._data[i] != _data[i]) return false;
@@ -169,27 +171,36 @@ class Ulid {
   }
 
   @override
-  int get hashCode => Object.hashAll(_data);
+  int get hashCode => _hashCode ??= Object.hashAll(_data);
+
+  @override
+  int compareTo(Ulid other) {
+    for (var i = 0; i < _data.length; i++) {
+      final cmp = _data[i].compareTo(other._data[i]);
+      if (cmp != 0) return cmp;
+    }
+    return 0;
+  }
 
   void _encode(int inS, int inE, Uint8List buffer, int outS, int outE) {
-    var value = BigInt.from(0);
+    var value = 0;
     for (var i = inS; i <= inE; i++) {
-      value = (value << 8) + BigInt.from(_data[i]);
+      value = (value << 8) | _data[i];
     }
     for (var i = outE; i >= outS; i--) {
-      buffer[i] = value.toInt() & 0x1F;
+      buffer[i] = value & 0x1F;
       value = value >> 5;
     }
   }
 
   static void _decode(
       Uint8List buffer, int inS, int inE, Uint8List data, int outS, int outE) {
-    var value = BigInt.from(0);
+    var value = 0;
     for (var i = inS; i <= inE; i++) {
-      value = (value << 5) + BigInt.from(buffer[i]);
+      value = (value << 5) | buffer[i];
     }
     for (var i = outE; i >= outS; i--) {
-      data[i] = value.toInt() & 0xFF;
+      data[i] = value & 0xFF;
       value = value >> 8;
     }
   }

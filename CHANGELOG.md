@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.0
+
+- Improved performance in various places.
+- `Comparable<Ulid>`
+
 ## 2.1.0
 
 - Fixed minor correctness bugs, invalid ULID string will throw `FormatException`.
