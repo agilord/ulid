@@ -159,6 +159,17 @@ void main() {
         () => Ulid.parse('01!j755t69g1r3e2c7fseyb102'), throwsFormatException);
   });
 
+  test('parse rejects values larger than 128 bits', () {
+    expect(Ulid.parse('7ZZZZZZZZZZZZZZZZZZZZZZZZZ').toBase32(),
+        '7ZZZZZZZZZZZZZZZZZZZZZZZZZ');
+    expect(
+        () => Ulid.parse('8ZZZZZZZZZZZZZZZZZZZZZZZZZ'), throwsFormatException);
+    expect(
+        () => Ulid.parse('80000000000000000000000000'), throwsFormatException);
+    expect(
+        () => Ulid.parse('zzzzzzzzzzzzzzzzzzzzzzzzzz'), throwsFormatException);
+  });
+
   test('parse rejects UUID strings with misplaced dashes', () {
     expect(Ulid.parse('015c8e52-e8c9-8070-3709-877e5de58402'), isNotNull);
     expect(() => Ulid.parse('015-c8e52e8c980703709877e5-de58402--'),
