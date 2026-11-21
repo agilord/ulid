@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.1
+
+- `Ulid.parse` rejects base32 values above `7ZZZZZZZZZZZZZZZZZZZZZZZZZ` with a
+  `FormatException` (previously the top bits were silently dropped).
+
 ## 2.2.0
 
 - Improved performance in various places.

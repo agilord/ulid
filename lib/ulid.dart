@@ -45,6 +45,10 @@ class Ulid implements Comparable<Ulid> {
   /// Parses the 26-character base32 (canonical or [toBase32]), the compact
   /// (32-character) or the full (36-character) UUID format. Accepts both
   /// upper- and lowercase input.
+  ///
+  /// Throws a [FormatException] if the base32 value contains invalid
+  /// characters or exceeds 128 bits (larger than
+  /// `7ZZZZZZZZZZZZZZZZZZZZZZZZZ`).
   factory Ulid.parse(String value) {
     if (value.length == 26) {
       return Ulid._parseBase32(value);
@@ -86,7 +90,8 @@ class Ulid implements Comparable<Ulid> {
     if (buffer[0] > 7) {
       // 26 base32 characters hold 130 bits, but a ULID has only 128:
       // the largest valid value is 7ZZZZZZZZZZZZZZZZZZZZZZZZZ.
-      throw FormatException('ULID is out of range.', value, 0);
+      throw FormatException(
+          'ULID is out of range (max 7ZZZZZZZZZZZZZZZZZZZZZZZZZ).', value, 0);
     }
     _decode(buffer, 0, 9, data, 0, 5); // time
     _decode(buffer, 10, 17, data, 6, 10); // random higher 40 bit

@@ -168,6 +168,17 @@ void main() {
         () => Ulid.parse('80000000000000000000000000'), throwsFormatException);
     expect(
         () => Ulid.parse('zzzzzzzzzzzzzzzzzzzzzzzzzz'), throwsFormatException);
+    expect(
+        () => Ulid.parse('8zzzzzzzzzzzzzzzzzzzzzzzzZ'), throwsFormatException);
+    expect(Ulid.parse('7zzzzzzzzzzzzzzzzzzzzzzzzz').toBase32(),
+        '7ZZZZZZZZZZZZZZZZZZZZZZZZZ');
+    for (final text in [
+      '00000000000000000000000000',
+      '7ZZZZZZZZZZZZZZZZZZZZZZZZZ',
+    ]) {
+      expect(Ulid.parse(text).toBase32(), text);
+      expect(Ulid.parse(Ulid.parse(text).toBase32()).toBase32(), text);
+    }
   });
 
   test('parse rejects UUID strings with misplaced dashes', () {
