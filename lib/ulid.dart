@@ -83,6 +83,11 @@ class Ulid implements Comparable<Ulid> {
       }
       buffer[i] = decoded;
     }
+    if (buffer[0] > 7) {
+      // 26 base32 characters hold 130 bits, but a ULID has only 128:
+      // the largest valid value is 7ZZZZZZZZZZZZZZZZZZZZZZZZZ.
+      throw FormatException('ULID is out of range.', value, 0);
+    }
     _decode(buffer, 0, 9, data, 0, 5); // time
     _decode(buffer, 10, 17, data, 6, 10); // random higher 40 bit
     _decode(buffer, 18, 25, data, 11, 15); // random lower 40 bit
