@@ -102,9 +102,18 @@ class Ulid implements Comparable<Ulid> {
   factory Ulid._parseHex16(String value) {
     final data = Uint8List(16);
     for (var i = 0; i < 16; i++) {
-      data[i] = int.parse(value.substring(i * 2, i * 2 + 2), radix: 16);
+      data[i] = (_hexDigit(value, i * 2) << 4) | _hexDigit(value, i * 2 + 1);
     }
     return Ulid._(data);
+  }
+
+  // Not int.parse: it also accepts a sign and whitespace (e.g. "-1", " 1").
+  static int _hexDigit(String value, int index) {
+    final code = value.codeUnitAt(index);
+    if (code >= 0x30 && code <= 0x39) return code - 0x30; // 0-9
+    final lower = code | 0x20;
+    if (lower >= 0x61 && lower <= 0x66) return lower - 0x61 + 10; // a-f
+    throw FormatException('Invalid character in ULID.', value, index);
   }
 
   /// Renders the 36- or 32-character UUID format (lowercase hex, unless

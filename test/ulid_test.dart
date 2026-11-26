@@ -189,6 +189,19 @@ void main() {
         throwsArgumentError);
   });
 
+  test('parse rejects non-hex characters in UUID strings', () {
+    for (final text in [
+      '-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1',
+      '+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f',
+      ' 15c8e52e8c980703709877e5de58402',
+      '015c8e52e8c980703709877e5de5840 ',
+      '+15c8e52-e8c9-8070-3709-877e5de58402',
+      '015c8e52-e8c9-8070-3709-877e5de5840 ',
+    ]) {
+      expect(() => Ulid.parse(text), throwsFormatException, reason: text);
+    }
+  });
+
   test('Ulid() rejects out-of-range millis', () {
     expect(() => Ulid(millis: -1), throwsArgumentError);
     expect(() => Ulid(millis: (1 << 48)), throwsArgumentError);
